@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+{% block title %}C24-IQ | Price Predictor{% endblock %}
+{% block page_title %}AI Price Predictor{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Price Prediction Engine</h1>
+  <p>Stacked ML ensemble · XGBoost + Random Forest + Gradient Boosting + Ridge · 25+ features</p>
+</div>
+
+<div style="display:grid;grid-template-columns:420px 1fr;gap:20px">
+  <!-- Input Form -->
+  <div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><i class="fa-solid fa-sliders"></i> Car Parameters</div>
+      </div>
+
+      <div class="grid-2" style="gap:12px">
+        <div class="form-group">
+          <label class="form-label">Brand</label>
+          <select id="f-brand" class="form-control" onchange="updateModels()">
+            {% for brand in brands %}<option>{{ brand }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Segment</label>
+          <select id="f-segment" class="form-control">
+            {% for s in segments %}<option>{{ s }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">City</label>
+        <select id="f-city" class="form-control">
+          {% for c in cities %}<option>{{ c }}</option>{% endfor %}
+        </select>
+      </div>
+
+      <div class="grid-2" style="gap:12px">
+        <div class="form-group">
+          <label class="form-label">Fuel Type</label>
+          <select id="f-fuel" class="form-control">
+            {% for f in fuel_types %}<option>{{ f }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Transmission</label>
+          <select id="f-trans" class="form-control">
+            <option>Manual</option><option>Automatic</option>
+            <option>AMT</option><option>CVT</option><option>DCT</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid-2" style="gap:12px">
+        <div class="form-group">
+          <label class="form-label">Age (Years): <span id="age-val" style="color:var(--accent)">3</span></label>
+          <input type="range" id="f-age" min="1" max="10" value="3" class="form-control" style="padding:6px 0"
+                 oninput="document.getElementById('age-val').textContent=this.value">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Owner Number</label>
+          <select id="f-owner" class="form-control">
+            <option value="1">1st Owner</option>
+            <option value="2">2nd Owner</option>
+            <option value="3">3rd Owner</option>
+            <option value="4">4th+ Owner</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">KM Driven: <span id="km-val" style="color:var(--accent)">36,000</span></label>
+        <input type="range" id="f-km" min="1000" max="200000" value="36000" step="1000" class="form-control"
+               style="padding:6px 0" oninput="document.getElementById('km-val').textContent=parseInt(this.value).toLocaleString()">
+      </div>
+
+      <div class="grid-2" style="gap:12px">
+        <div class="form-group">
+          <label class="form-label">Condition</label>
+          <select id="f-condition" class="form-control">
+            <option>Excellent</option><option selected>Good</option>
+            <option>Fair</option><option>Poor</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Color</label>
+          <select id="f-color" class="form-control">
+            <option>White</option><option>Silver</option><option>Black</option>
+            <option>Grey</option><option>Red</option><option>Blue</option><option>Brown</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid-2" style="gap:12px">
+        <div class="form-group">
+          <label class="form-label">Accidents</label>
+          <select id="f-accident" class="form-control">
+            <option value="0">None</option>
+            <option value="1">1 Accident</option>
+            <option value="2">2+ Accidents</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Extras</label>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+              <input type="checkbox" id="f-insurance" checked> Insurance Valid
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+              <input type="checkbox" id="f-service" checked> Service Records
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <button onclick="predict()" class="btn btn-primary" style="width:100%">
+        <i class="fa-solid fa-brain"></i> Predict Price
+      </button>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <!-- Main result -->
+    <div class="card" id="result-card">
+      <div style="text-align:center;padding:30px 20px" id="result-placeholder">
+        <i class="fa-solid fa-car-side" style="font-size:40px;opacity:0.2;margin-bottom:12px;display:block"></i>
+        <p style="color:var(--muted)">Configure car parameters and click Predict</p>
+      </div>
+      <div id="result-content" style="display:none">
+        <div style="text-align:center;margin-bottom:24px">
+          <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:8px">PREDICTED FAIR MARKET VALUE</div>
+          <div style="font-family:'DM Serif Display',serif;font-size:48px;color:var(--accent)" id="pred-price">—</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:4px">
+            Range: <span class="mono" id="pred-range">—</span>
+          </div>
+          <div style="margin-top:12px;display:flex;gap:8px;justify-content:center" id="pred-badges"></div>
+        </div>
+
+        <!-- Model breakdown -->
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:600;letter-spacing:0.5px">MODEL BREAKDOWN</div>
+          <div id="model-breakdown" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Explanation + confidence -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:14px"><i class="fa-solid fa-magnifying-glass"></i> Feature Impact</div>
+        <div id="explanation-list" style="display:flex;flex-direction:column;gap:8px">
+          <div style="color:var(--muted);font-size:12px">Run a prediction to see feature impacts</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:14px"><i class="fa-solid fa-chart-bar"></i> Confidence</div>
+        <canvas id="conf-chart" height="180"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let confChart = null;
+
+async function predict() {
+  const btn = document.querySelector('.btn-primary');
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Predicting...';
+  btn.disabled = true;
+
+  const payload = {
+    brand: document.getElementById('f-brand').value,
+    model: 'Swift', // simplified
+    segment: document.getElementById('f-segment').value,
+    fuel_type: document.getElementById('f-fuel').value,
+    transmission: document.getElementById('f-trans').value,
+    city: document.getElementById('f-city').value,
+    color: document.getElementById('f-color').value,
+    condition_grade: document.getElementById('f-condition').value,
+    age_years: parseInt(document.getElementById('f-age').value),
+    km_driven: parseInt(document.getElementById('f-km').value),
+    owner_number: parseInt(document.getElementById('f-owner').value),
+    accident_history: parseInt(document.getElementById('f-accident').value),
+    insurance_valid: document.getElementById('f-insurance').checked,
+    service_records: document.getElementById('f-service').checked,
+    popularity_score: 80,
+  };
+
+  try {
+    const res = await fetch('/api/predict', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const d = await res.json();
+    if (d.error) throw new Error(d.error);
+    renderResult(d);
+  } catch(e) {
+    alert('Error: ' + e.message);
+  }
+
+  btn.innerHTML = '<i class="fa-solid fa-brain"></i> Predict Price';
+  btn.disabled = false;
+}
+
+function renderResult(d) {
+  document.getElementById('result-placeholder').style.display = 'none';
+  document.getElementById('result-content').style.display = 'block';
+
+  document.getElementById('pred-price').textContent = fmtINR(d.ensemble_price);
+  document.getElementById('pred-range').textContent = `${fmtINR(d.ci_lower)} – ${fmtINR(d.ci_upper)}`;
+
+  const badges = document.getElementById('pred-badges');
+  badges.innerHTML = `
+    <span style="background:rgba(34,197,94,0.12);color:var(--green);padding:4px 10px;border-radius:20px;font-size:11px">
+      ${d.confidence_pct}% confidence
+    </span>
+    <span style="background:rgba(255,107,43,0.12);color:var(--accent);padding:4px 10px;border-radius:20px;font-size:11px">
+      ${d.depreciation_stage}
+    </span>
+    ${d.is_anomaly_price ? '<span style="background:rgba(239,68,68,0.12);color:var(--red);padding:4px 10px;border-radius:20px;font-size:11px">⚠ Anomaly Detected</span>' : ''}
+  `;
+
+  // Model breakdown
+  const breakdown = document.getElementById('model-breakdown');
+  breakdown.innerHTML = '';
+  const models = d.model_predictions;
+  const maxVal = Math.max(...Object.values(models));
+  const colors = {random_forest:'var(--green)',gradient_boost:'var(--purple)',xgboost:'var(--teal)',ridge:'var(--yellow)',elasticnet:'var(--accent)'};
+  const labels = {random_forest:'Random Forest',gradient_boost:'Gradient Boost',xgboost:'XGBoost',ridge:'Ridge',elasticnet:'ElasticNet'};
+
+  for (const [k, v] of Object.entries(models)) {
+    const pct = (v / maxVal * 100).toFixed(0);
+    breakdown.innerHTML += `
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:110px;font-size:11px;color:var(--muted)">${labels[k]||k}</div>
+        <div style="flex:1;background:var(--bg);border-radius:4px;height:6px">
+          <div style="width:${pct}%;height:6px;background:${colors[k]||'var(--accent)'};border-radius:4px;transition:width 0.8s ease"></div>
+        </div>
+        <div class="mono" style="font-size:11px;color:var(--text);width:70px;text-align:right">${fmtINR(v)}</div>
+      </div>`;
+  }
+
+  // Feature impact
+  const expList = document.getElementById('explanation-list');
+  expList.innerHTML = '';
+  for (const e of d.explanation) {
+    const isPos = e.impact > 0;
+    const pct = Math.min(100, Math.abs(e.impact) * 500);
+    expList.innerHTML += `
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:100px;font-size:11px;color:var(--muted)">${e.feature}</div>
+        <div style="flex:1;display:flex;justify-content:center;height:6px;background:var(--bg);border-radius:4px">
+          <div style="width:${pct}%;height:6px;background:${isPos?'var(--green)':'var(--red)'};border-radius:4px;margin-left:${isPos?50:50-pct}%"></div>
+        </div>
+        <i class="fa-solid fa-arrow-${isPos?'up':'down'}" style="color:${isPos?'var(--green)':'var(--red)'};font-size:9px"></i>
+      </div>`;
+  }
+
+  // Confidence chart
+  if (confChart) confChart.destroy();
+  const ctx = document.getElementById('conf-chart').getContext('2d');
+  confChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: Object.keys(d.model_predictions).map(k=>({random_forest:'RF',gradient_boost:'GB',xgboost:'XGB',ridge:'Ridge',elasticnet:'EN'}[k]||k)),
+      datasets: [{
+        data: Object.values(d.model_predictions),
+        backgroundColor: ['rgba(34,197,94,0.6)','rgba(139,92,246,0.6)','rgba(0,212,200,0.6)','rgba(245,158,11,0.6)','rgba(255,107,43,0.6)'],
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false } },
+        y: {
+          ticks: { callback: v => '₹' + (v/100000).toFixed(1)+'L' }
+        }
+      }
+    }
+  });
+}
+</script>
+{% endblock %}

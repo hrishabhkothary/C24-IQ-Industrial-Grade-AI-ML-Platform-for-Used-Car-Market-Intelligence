@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}C24-IQ | Listings{% endblock %}
+{% block page_title %}Car Listings{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Live Car Listings</h1>
+  <p>Search and filter 5,000+ car records · Real-time anomaly detection · Price intelligence</p>
+</div>
+
+<!-- Filters -->
+<div class="card" style="margin-bottom:16px">
+  <div style="display:grid;grid-template-columns:repeat(6,1fr) auto;gap:12px;align-items:end">
+    <div>
+      <label class="form-label">Brand</label>
+      <select id="f-brand" class="form-control">
+        <option value="">All Brands</option>
+        {% for b in brands %}<option>{{ b }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="form-label">City</label>
+      <select id="f-city" class="form-control">
+        <option value="">All Cities</option>
+        {% for c in cities %}<option>{{ c }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="form-label">Segment</label>
+      <select id="f-segment" class="form-control">
+        <option value="">All</option>
+        <option>Hatchback</option><option>Sedan</option>
+        <option>SUV</option><option>MPV</option><option>Electric</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label">Fuel</label>
+      <select id="f-fuel" class="form-control">
+        <option value="">All</option>
+        <option>Petrol</option><option>Diesel</option>
+        <option>CNG</option><option>Electric</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label">Min Price (₹L)</label>
+      <input id="f-min" type="number" class="form-control" placeholder="e.g. 3">
+    </div>
+    <div>
+      <label class="form-label">Max Price (₹L)</label>
+      <input id="f-max" type="number" class="form-control" placeholder="e.g. 15">
+    </div>
+    <button onclick="loadListings()" class="btn btn-primary">
+      <i class="fa-solid fa-magnifying-glass"></i>
+    </button>
+  </div>
+</div>
+
+<!-- Stats bar -->
+<div style="display:flex;gap:16px;margin-bottom:16px" id="stats-bar">
+  <div class="card" style="padding:12px 16px;display:flex;align-items:center;gap:10px;flex:1">
+    <i class="fa-solid fa-list" style="color:var(--accent)"></i>
+    <div><div class="kpi-label">Results</div><div class="mono" style="font-size:16px" id="res-count">—</div></div>
+  </div>
+  <div class="card" style="padding:12px 16px;display:flex;align-items:center;gap:10px;flex:1">
+    <i class="fa-solid fa-indian-rupee-sign" style="color:var(--teal)"></i>
+    <div><div class="kpi-label">Avg Price</div><div style="font-size:16px" id="res-avg">—</div></div>
+  </div>
+  <div class="card" style="padding:12px 16px;display:flex;align-items:center;gap:10px;flex:1">
+    <i class="fa-solid fa-arrow-down" style="color:var(--green)"></i>
+    <div><div class="kpi-label">Min Price</div><div style="font-size:16px" id="res-min">—</div></div>
+  </div>
+  <div class="card" style="padding:12px 16px;display:flex;align-items:center;gap:10px;flex:1">
+    <i class="fa-solid fa-arrow-up" style="color:var(--purple)"></i>
+    <div><div class="kpi-label">Max Price</div><div style="font-size:16px" id="res-max">—</div></div>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="card">
+  <div class="table-wrap">
+    <table id="listings-table">
+      <thead>
+        <tr>
+          <th>#</th><th>Brand / Model</th><th>Year</th><th>KM Driven</th>
+          <th>Fuel</th><th>City</th><th>Owner</th><th>Condition</th>
+          <th>Price</th><th>Views</th><th>Days</th>
+        </tr>
+      </thead>
+      <tbody id="listings-body">
+        <tr><td colspan="11" style="text-align:center;padding:40px;color:var(--muted)">
+          <i class="fa-solid fa-filter" style="font-size:24px;display:block;margin-bottom:8px;opacity:0.3"></i>
+          Click search to load listings
+        </td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Load stats on page load
+fetch('/api/listings/stats').then(r=>r.json()).then(d => {
+  document.getElementById('res-count').textContent = d.total.toLocaleString();
+  document.getElementById('res-avg').textContent = fmtINR(d.avg_price);
+  document.getElementById('res-min').textContent = fmtINR(d.min_price);
+  document.getElementById('res-max').textContent = fmtINR(d.max_price);
+});
+
+async function loadListings() {
+  const params = new URLSearchParams({
+    brand: document.getElementById('f-brand').value,
+    city: document.getElementById('f-city').value,
+    segment: document.getElementById('f-segment').value,
+    fuel: document.getElementById('f-fuel').value,
+    min_price: (parseFloat(document.getElementById('f-min').value)||0)*100000,
+    max_price: (parseFloat(document.getElementById('f-max').value)||0)*100000,
+    limit: 100,
+  });
+  const res = await fetch('/api/listings?' + params);
+  const data = await res.json();
+  renderTable(data);
+}
+
+function renderTable(data) {
+  document.getElementById('res-count').textContent = data.length;
+  if (data.length > 0) {
+    const prices = data.map(x=>x.listing_price);
+    document.getElementById('res-avg').textContent = fmtINR(prices.reduce((a,b)=>a+b,0)/prices.length);
+    document.getElementById('res-min').textContent = fmtINR(Math.min(...prices));
+    document.getElementById('res-max').textContent = fmtINR(Math.max(...prices));
+  }
+
+  const fuelTags = {Petrol:'tag-petrol',Diesel:'tag-diesel',Electric:'tag-electric',CNG:'tag-cng',Hybrid:'tag-hybrid'};
+  const condColors = {Excellent:'var(--green)',Good:'var(--teal)',Fair:'var(--yellow)',Poor:'var(--red)'};
+
+  document.getElementById('listings-body').innerHTML = data.map((r,i) => `
+    <tr>
+      <td class="mono" style="color:var(--muted)">${r.id}</td>
+      <td>
+        <div style="font-weight:600;font-size:12px">${r.brand} ${r.model}</div>
+        <div style="font-size:10px;color:var(--muted)">${r.variant||''} · ${r.color}</div>
+      </td>
+      <td class="mono">${r.manufacture_year}</td>
+      <td class="mono">${r.km_driven.toLocaleString()} km</td>
+      <td><span class="tag ${fuelTags[r.fuel_type]||''}">${r.fuel_type}</span></td>
+      <td style="font-size:12px">${r.city}</td>
+      <td style="font-size:11px;color:var(--muted)">${r.owner_type.split(' ')[0]}</td>
+      <td><span style="font-size:11px;color:${condColors[r.condition_grade]||'var(--text)'}">${r.condition_grade}</span></td>
+      <td style="font-weight:600;color:var(--accent)">${fmtINR(r.listing_price)}</td>
+      <td class="mono" style="color:var(--muted)">${r.views}</td>
+      <td class="mono" style="color:var(--muted)">${r.days_on_market}d</td>
+    </tr>
+  `).join('') || '<tr><td colspan="11" style="text-align:center;padding:20px;color:var(--muted)">No results found</td></tr>';
+}
+
+loadListings();
+</script>
+{% endblock %}

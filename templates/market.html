@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block title %}C24-IQ | Market Intel{% endblock %}
+{% block page_title %}Market Intelligence{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Market Intelligence</h1>
+  <p>Demand forecasting · Anomaly detection · Segment deep dive · Price distribution</p>
+</div>
+
+<!-- Anomaly Detection -->
+<div class="grid-2" style="margin-bottom:16px">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fa-solid fa-triangle-exclamation" style="color:var(--yellow)"></i> Anomaly Detected Listings</div>
+      <span class="badge" style="background:rgba(239,68,68,0.1);color:var(--red);border-color:rgba(239,68,68,0.2)">Isolation Forest</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Brand/Model</th><th>City</th><th>Price</th><th>KM</th><th>Age</th><th>Score</th></tr></thead>
+        <tbody id="anomaly-table">
+          <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fa-solid fa-chart-scatter" style="color:var(--purple)"></i> Price vs KM Distribution</div>
+    </div>
+    <canvas id="scatterChart"></canvas>
+  </div>
+</div>
+
+<!-- Segment Analysis -->
+<div class="card" style="margin-bottom:16px">
+  <div class="card-header">
+    <div class="card-title"><i class="fa-solid fa-layer-group"></i> Segment × Fuel Analysis Matrix</div>
+  </div>
+  <div class="table-wrap">
+    <table id="seg-table">
+      <thead><tr><th>Segment</th><th>Fuel</th><th>Count</th><th>Avg Price</th><th>Avg Age</th><th>Avg KM</th><th>Avg Days</th><th>Demand</th></tr></thead>
+      <tbody id="seg-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Price Distribution -->
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fa-solid fa-chart-area"></i> Price Distribution</div>
+    </div>
+    <canvas id="distChart"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fa-solid fa-trophy"></i> Top Performing Models</div>
+    </div>
+    <div id="top-models" style="display:flex;flex-direction:column;gap:8px"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Anomalies
+fetch('/api/anomalies').then(r=>r.json()).then(data => {
+  const tbody = document.getElementById('anomaly-table');
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:20px">No anomalies detected</td></tr>'; return; }
+  tbody.innerHTML = data.slice(0,10).map(r => `
+    <tr>
+      <td style="font-weight:600;font-size:12px">${r.brand} ${r.model}</td>
+      <td style="font-size:12px">${r.city}</td>
+      <td style="color:var(--red);font-weight:600">${fmtINR(r.listing_price)}</td>
+      <td class="mono" style="font-size:11px">${r.km_driven.toLocaleString()}</td>
+      <td class="mono" style="font-size:11px">${r.age_years}yr</td>
+      <td class="mono" style="font-size:11px;color:var(--yellow)">${r.anomaly_score.toFixed(3)}</td>
+    </tr>`).join('');
+});
+
+// Segment analysis
+fetch('/api/segment_analysis').then(r=>r.json()).then(data => {
+  const fuelColors = {Petrol:'var(--yellow)',Diesel:'var(--purple)',Electric:'var(--teal)',CNG:'var(--green)',Hybrid:'var(--accent)'};
+  document.getElementById('seg-body').innerHTML = data.slice(0,20).map(r => `
+    <tr>
+      <td style="font-weight:600;font-size:12px">${r.segment}</td>
+      <td><span style="color:${fuelColors[r.fuel_type]||'var(--muted)'};font-size:11px">${r.fuel_type}</span></td>
+      <td class="mono">${r.count}</td>
+      <td style="color:var(--accent)">${fmtINR(r.avg_price)}</td>
+      <td class="mono">${r.avg_age.toFixed(1)}yr</td>
+      <td class="mono">${Math.round(r.avg_km/1000)}K km</td>
+      <td class="mono">${r.avg_days.toFixed(1)}d</td>
+      <td>
+        <div class="progress-bar" style="width:80px">
+          <div class="progress-fill" style="width:${Math.min(100,r.count/2)}%;background:var(--teal)"></div>
+        </div>
+      </td>
+    </tr>`).join('');
+
+  // Scatter data approx
+  const pts = data.map(r => ({x: r.avg_km/1000, y: r.avg_price/100000, label: r.segment}));
+  const segColors2 = {Hatchback:'rgba(245,158,11,0.7)',Sedan:'rgba(0,212,200,0.7)',SUV:'rgba(139,92,246,0.7)',MPV:'rgba(255,107,43,0.7)',Electric:'rgba(34,197,94,0.7)'};
+  const datasets = [...new Set(data.map(r=>r.segment))].map(seg => ({
+    label: seg,
+    data: data.filter(r=>r.segment===seg).map(r=>({x:r.avg_km/1000,y:r.avg_price/100000})),
+    backgroundColor: segColors2[seg]||'rgba(255,255,255,0.5)',
+    pointRadius: 8,
+  }));
+  new Chart(document.getElementById('scatterChart'), {
+    type: 'scatter',
+    data: { datasets },
+    options: {
+      plugins: { legend: { labels:{boxWidth:12,font:{size:11}} } },
+      scales: {
+        x: { title:{display:true,text:'Avg KM (thousands)',color:'#6b7280'},grid:{color:'#1e2230'} },
+        y: { title:{display:true,text:'Avg Price (Lakhs)',color:'#6b7280'},grid:{color:'#1e2230'} }
+      }
+    }
+  });
+
+  // Price distribution histogram (approximated)
+  const buckets = [1,2,3,4,5,6,7,8,10,12,15,20];
+  const labels = buckets.map((b,i) => i===0?`<${b}L`:`${buckets[i-1]}-${b}L`);
+  const counts = buckets.map((b,i) => {
+    const lo = i===0?0:buckets[i-1]*100000;
+    const hi = b*100000;
+    return data.reduce((s,r)=>s+(r.avg_price>=lo&&r.avg_price<hi?r.count:0),0);
+  });
+  new Chart(document.getElementById('distChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: counts,
+        backgroundColor: 'rgba(0,212,200,0.6)',
+        borderRadius: 5,
+      }]
+    },
+    options: {
+      plugins: { legend:{display:false} },
+      scales: {
+        x: { grid:{display:false}, ticks:{font:{size:9},maxRotation:45} },
+        y: { grid:{color:'#1e2230'} }
+      }
+    }
+  });
+
+  // Top models by count
+  const el = document.getElementById('top-models');
+  const bySegment = {};
+  data.forEach(r => { bySegment[r.segment] = (bySegment[r.segment]||0) + r.count; });
+  const sorted = Object.entries(bySegment).sort((a,b)=>b[1]-a[1]);
+  const max = sorted[0][1];
+  const segC = {Hatchback:'var(--yellow)',Sedan:'var(--teal)',SUV:'var(--purple)',MPV:'var(--accent)',Electric:'var(--green)'};
+  el.innerHTML = sorted.map(([seg,cnt]) => `
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:90px;font-size:12px;font-weight:600;color:${segC[seg]||'var(--muted)'}">${seg}</div>
+      <div style="flex:1">
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:${cnt/max*100}%;background:${segC[seg]||'var(--accent)'}"></div>
+        </div>
+      </div>
+      <div class="mono" style="font-size:11px;width:40px;text-align:right">${cnt}</div>
+    </div>`).join('');
+});
+</script>
+{% endblock %}

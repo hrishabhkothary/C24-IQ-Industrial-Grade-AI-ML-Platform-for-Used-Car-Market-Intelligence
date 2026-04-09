@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+{% block title %}C24-IQ | Dashboard{% endblock %}
+{% block page_title %}Analytics Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Market Dashboard</h1>
+  <p>Real-time analytics · Brand distribution · Price trends · Segment intelligence</p>
+</div>
+
+<!-- KPI Row -->
+<div class="kpi-grid" style="grid-template-columns:repeat(6,1fr);margin-bottom:20px" id="kpi-row">
+  <div class="kpi-card orange"><div class="kpi-label">Listings</div><div class="kpi-value mono" id="d-total">—</div></div>
+  <div class="kpi-card teal"><div class="kpi-label">Avg Price</div><div class="kpi-value" id="d-price">—</div></div>
+  <div class="kpi-card purple"><div class="kpi-label">Avg Days</div><div class="kpi-value mono" id="d-days">—</div></div>
+  <div class="kpi-card green"><div class="kpi-label">ML Preds</div><div class="kpi-value mono" id="d-preds">—</div></div>
+  <div class="kpi-card orange"><div class="kpi-label">RAG Queries</div><div class="kpi-value mono" id="d-rag">—</div></div>
+  <div class="kpi-card teal"><div class="kpi-label">Loan Approval</div><div class="kpi-value mono" id="d-loan">—</div></div>
+</div>
+
+<!-- Row 1 -->
+<div class="grid-2" style="margin-bottom:16px">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fa-solid fa-chart-bar"></i> Brand Distribution</div>
+    </div>
+    <canvas id="brandChart"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fa-solid fa-location-dot"></i> City Demand Heatmap</div>
+    </div>
+    <canvas id="cityChart"></canvas>
+  </div>
+</div>
+
+<!-- Row 2 -->
+<div class="grid-2" style="margin-bottom:16px">
+  <div class="card" style="grid-column:span 2">
+    <div class="card-header">
+      <div class="card-title"><i class="fa-solid fa-chart-line"></i> Price Trend by Segment</div>
+      <select id="segment-filter" class="form-control" style="width:150px;font-size:12px" onchange="renderTrend()">
+        <option value="">All Segments</option>
+        <option>Hatchback</option><option>Sedan</option>
+        <option>SUV</option><option>MPV</option><option>Electric</option>
+      </select>
+    </div>
+    <canvas id="trendChart" style="max-height:200px"></canvas>
+  </div>
+</div>
+
+<!-- Row 3 -->
+<div class="grid-2" style="margin-bottom:16px">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fa-solid fa-gas-pump"></i> Fuel Type Mix</div>
+    </div>
+    <canvas id="fuelChart"></canvas>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fa-solid fa-gauge"></i> ML Model Performance</div>
+    </div>
+    <div id="model-perf" style="display:flex;flex-direction:column;gap:10px"></div>
+  </div>
+</div>
+
+<!-- Forecast -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title"><i class="fa-solid fa-forward"></i> 30-Day Demand Forecast</div>
+    <span class="badge">Time Series</span>
+  </div>
+  <canvas id="forecastChart" style="max-height:200px"></canvas>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let trendData = [];
+
+// KPIs
+fetch('/api/kpis').then(r=>r.json()).then(d => {
+  document.getElementById('d-total').textContent = d.total_listings.toLocaleString();
+  document.getElementById('d-price').textContent = fmtINR(d.avg_price);
+  document.getElementById('d-days').textContent = d.avg_days + 'd';
+  document.getElementById('d-preds').textContent = d.total_predictions;
+  document.getElementById('d-rag').textContent = d.total_rag_queries;
+  document.getElementById('d-loan').textContent = d.loan_approval_rate.toFixed(1) + '%';
+});
+
+// Brand chart
+fetch('/api/brand_distribution').then(r=>r.json()).then(d => {
+  const top = d.slice(0,8);
+  new Chart(document.getElementById('brandChart'), {
+    type: 'bar',
+    data: {
+      labels: top.map(x=>x.brand),
+      datasets: [{
+        label: 'Listings',
+        data: top.map(x=>x.count),
+        backgroundColor: 'rgba(255,107,43,0.7)',
+        borderRadius: 6,
+      }, {
+        label: 'Avg Price (L)',
+        data: top.map(x=>x.avg_price/100000),
+        backgroundColor: 'rgba(0,212,200,0.5)',
+        borderRadius: 6,
+        yAxisID: 'y2',
+      }]
+    },
+    options: {
+      plugins: { legend: { labels: { boxWidth: 12, font:{size:11} } } },
+      scales: {
+        x: { grid: { display:false } },
+        y: { grid: { color:'#1e2230' }, ticks: { font:{size:10} } },
+        y2: { position:'right', grid:{display:false}, ticks:{callback:v=>v+'L', font:{size:10}} }
+      }
+    }
+  });
+});
+
+// City chart
+fetch('/api/city_heatmap').then(r=>r.json()).then(d => {
+  const colors = d.map(x => {
+    const di = x.demand_index;
+    if (di > 110) return 'rgba(255,107,43,0.8)';
+    if (di > 100) return 'rgba(0,212,200,0.7)';
+    return 'rgba(139,92,246,0.6)';
+  });
+  new Chart(document.getElementById('cityChart'), {
+    type: 'bar',
+    data: {
+      labels: d.map(x=>x.city),
+      datasets: [{
+        data: d.map(x=>x.demand_index),
+        backgroundColor: colors,
+        borderRadius: 5,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend:{display:false} },
+      scales: {
+        x: { grid:{color:'#1e2230'}, ticks:{font:{size:10}} },
+        y: { grid:{display:false}, ticks:{font:{size:10}} }
+      }
+    }
+  });
+});
+
+// Price trend
+let trendChart = null;
+fetch('/api/price_trend').then(r=>r.json()).then(d => {
+  trendData = d;
+  renderTrend();
+});
+
+function renderTrend() {
+  const seg = document.getElementById('segment-filter').value;
+  const filtered = seg ? trendData.filter(x=>x.segment===seg) : trendData;
+  const segments = [...new Set(filtered.map(x=>x.segment))].slice(0,4);
+  const months = [...new Set(filtered.map(x=>x.month))].sort().slice(-12);
+  const palette = ['rgba(255,107,43,0.8)','rgba(0,212,200,0.8)','rgba(139,92,246,0.8)','rgba(34,197,94,0.8)','rgba(245,158,11,0.8)'];
+
+  const datasets = segments.map((seg,i) => ({
+    label: seg,
+    data: months.map(m => {
+      const row = filtered.find(x=>x.month===m && x.segment===seg);
+      return row ? row.avg_price/100000 : null;
+    }),
+    borderColor: palette[i],
+    backgroundColor: palette[i].replace('0.8','0.1'),
+    tension: 0.4, fill: true, pointRadius: 3,
+  }));
+
+  if (trendChart) trendChart.destroy();
+  trendChart = new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: { labels: months, datasets },
+    options: {
+      plugins: { legend: { labels:{boxWidth:12,font:{size:11}} } },
+      scales: {
+        x: { grid:{color:'#1e2230'}, ticks:{font:{size:10}} },
+        y: { grid:{color:'#1e2230'}, ticks:{callback:v=>v+'L',font:{size:10}} }
+      }
+    }
+  });
+}
+
+// Fuel mix
+fetch('/api/segment_analysis').then(r=>r.json()).then(d => {
+  const fuels = {};
+  d.forEach(x => { fuels[x.fuel_type] = (fuels[x.fuel_type]||0) + x.count; });
+  const colors = {Petrol:'rgba(245,158,11,0.7)',Diesel:'rgba(139,92,246,0.7)',
+                  CNG:'rgba(34,197,94,0.7)',Electric:'rgba(0,212,200,0.7)',Hybrid:'rgba(255,107,43,0.7)'};
+  new Chart(document.getElementById('fuelChart'), {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(fuels),
+      datasets: [{ data: Object.values(fuels),
+        backgroundColor: Object.keys(fuels).map(k=>colors[k]||'#888'),
+        borderWidth: 0, hoverOffset: 8 }]
+    },
+    options: { plugins: { legend: { position:'right', labels:{boxWidth:12,font:{size:11}} } } }
+  });
+});
+
+// Model metrics
+fetch('/api/model_metrics').then(r=>r.json()).then(d => {
+  const el = document.getElementById('model-perf');
+  if (!d.metrics) return;
+  const order = ['ensemble','xgboost','random_forest','gradient_boost','ridge','elasticnet'];
+  const colors = {ensemble:'var(--accent)',xgboost:'var(--teal)',random_forest:'var(--green)',gradient_boost:'var(--purple)',ridge:'var(--yellow)',elasticnet:'var(--muted)'};
+  const labels = {ensemble:'Ensemble',xgboost:'XGBoost',random_forest:'Random Forest',gradient_boost:'Gradient Boost',ridge:'Ridge',elasticnet:'ElasticNet'};
+  for (const k of order) {
+    if (!d.metrics[k]) continue;
+    const m = d.metrics[k];
+    el.innerHTML += `
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:100px;font-size:11px;color:var(--muted)">${labels[k]}</div>
+        <div style="flex:1">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:3px">
+            <span>R²: <span style="color:${colors[k]}" class="mono">${m.r2}</span></span>
+            <span>MAPE: <span class="mono">${m.mape}%</span></span>
+            <span>MAE: <span class="mono">₹${(m.mae/1000).toFixed(0)}K</span></span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width:${m.r2*100}%;background:${colors[k]}"></div>
+          </div>
+        </div>
+      </div>`;
+  }
+});
+
+// Forecast
+fetch('/api/demand_forecast').then(r=>r.json()).then(d => {
+  if (!d || !d.length) return;
+  const hist = d.filter(x=>!x.is_forecast);
+  const fore = d.filter(x=>x.is_forecast);
+  new Chart(document.getElementById('forecastChart'), {
+    type: 'line',
+    data: {
+      labels: d.map(x=>x.date),
+      datasets: [{
+        label: 'Historical',
+        data: hist.map(x=>x.volume),
+        borderColor: 'rgba(0,212,200,0.8)',
+        backgroundColor: 'rgba(0,212,200,0.05)',
+        tension: 0.3, fill: true, pointRadius: 0,
+      },{
+        label: 'Forecast',
+        data: [...hist.map(()=>null), ...fore.map(x=>x.volume)],
+        borderColor: 'rgba(255,107,43,0.8)',
+        backgroundColor: 'rgba(255,107,43,0.05)',
+        borderDash: [5,5], tension: 0.3, fill: true, pointRadius: 0,
+      }]
+    },
+    options: {
+      plugins: { legend: { labels:{boxWidth:12,font:{size:11}} } },
+      scales: {
+        x: { grid:{display:false}, ticks:{maxTicksLimit:8,font:{size:10}} },
+        y: { grid:{color:'#1e2230'}, ticks:{font:{size:10}} }
+      }
+    }
+  });
+});
+</script>
+{% endblock %}

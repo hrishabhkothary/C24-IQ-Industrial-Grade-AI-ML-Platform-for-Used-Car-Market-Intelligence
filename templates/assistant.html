@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+{% block title %}C24-IQ | AI Assistant{% endblock %}
+{% block page_title %}GenAI Car Assistant{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>RAG-Powered Car Assistant</h1>
+  <p>Claude LLM + Retrieval Augmented Generation · 9-category knowledge base · Live market context injection</p>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 280px;gap:20px;height:calc(100vh - 220px)">
+  <!-- Chat -->
+  <div class="card" style="display:flex;flex-direction:column;padding:0;overflow:hidden">
+    <!-- Chat header -->
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px">
+      <div style="width:36px;height:36px;border-radius:50%;background:rgba(0,212,200,0.15);display:flex;align-items:center;justify-content:center;color:var(--teal);font-size:16px">
+        <i class="fa-solid fa-robot"></i>
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:600">C24-IQ Assistant</div>
+        <div style="font-size:11px;color:var(--muted)">Powered by Claude · RAG · Market Data</div>
+      </div>
+      <button onclick="resetChat()" style="margin-left:auto;background:none;border:1px solid var(--border);color:var(--muted);padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer">
+        <i class="fa-solid fa-rotate"></i> Reset
+      </button>
+    </div>
+
+    <!-- Messages -->
+    <div id="chat-messages" style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px">
+      <!-- Welcome -->
+      <div class="chat-msg">
+        <div class="chat-avatar" style="background:rgba(0,212,200,0.15);color:var(--teal)"><i class="fa-solid fa-robot"></i></div>
+        <div class="chat-bubble">
+          <strong>Hello! I'm C24-IQ</strong>, your intelligent car market assistant.<br><br>
+          I can help you with:
+          <ul style="margin-top:8px;padding-left:16px;color:var(--muted);font-size:12px">
+            <li>Used car pricing & depreciation</li>
+            <li>Buying & selling advice</li>
+            <li>Car loan calculations & eligibility</li>
+            <li>Market trends across cities</li>
+            <li>Electric vehicle guidance</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div style="padding:16px 20px;border-top:1px solid var(--border)">
+      <!-- Quick prompts -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px" id="quick-prompts">
+        {% for q in [
+          "What affects used car price most?",
+          "Best time to sell my car?",
+          "Maruti vs Hyundai resale value?",
+          "EV battery warranty details?",
+          "How to get best loan rate?",
+          "Depreciation in year 1?"
+        ] %}
+        <button onclick="sendQuick('{{ q }}')"
+                style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:12px;font-size:11px;cursor:pointer;transition:all 0.2s"
+                onmouseover="this.style.borderColor='var(--teal)';this.style.color='var(--teal)'"
+                onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
+          {{ q }}
+        </button>
+        {% endfor %}
+      </div>
+      <div style="display:flex;gap:10px">
+        <input type="text" id="chat-input" class="form-control"
+               placeholder="Ask about car prices, market trends, loans..."
+               onkeydown="if(event.key==='Enter')sendMessage()">
+        <button onclick="sendMessage()" class="btn btn-teal" id="send-btn" style="white-space:nowrap;color:#0a0b10">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar info -->
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <!-- Knowledge base -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px"><i class="fa-solid fa-book"></i> Knowledge Base</div>
+      {% for cat, icon in [
+        ("Depreciation","fa-arrow-trend-down"),
+        ("Pricing","fa-tags"),
+        ("Market Trends","fa-chart-line"),
+        ("Buying Tips","fa-circle-check"),
+        ("Selling Tips","fa-handshake"),
+        ("Finance","fa-credit-card"),
+        ("EV Market","fa-bolt"),
+        ("Cars24","fa-car"),
+        ("Valuation","fa-calculator")
+      ] %}
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;margin-bottom:3px;background:var(--bg)">
+        <i class="fa-solid {{ icon }}" style="color:var(--accent);font-size:11px;width:14px"></i>
+        <span style="font-size:11px;color:var(--muted)">{{ cat }}</span>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- RAG Pipeline -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px"><i class="fa-solid fa-diagram-project"></i> RAG Pipeline</div>
+      {% for step, desc in [
+        ("Query","User question"),
+        ("Retrieve","Top-K KB chunks"),
+        ("Inject","Live market data"),
+        ("Generate","Claude API call"),
+        ("Store","Log to PostgreSQL")
+      ] %}
+      <div style="display:flex;gap:8px;margin-bottom:8px;align-items:flex-start">
+        <div style="width:20px;height:20px;border-radius:50%;background:rgba(255,107,43,0.15);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--accent);flex-shrink:0;font-weight:700;margin-top:1px">{{ loop.index }}</div>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--text)">{{ step }}</div>
+          <div style="font-size:10px;color:var(--muted)">{{ desc }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Stats -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:10px"><i class="fa-solid fa-chart-simple"></i> Session Stats</div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:11px;color:var(--muted)">Messages sent</span>
+        <span class="mono" style="font-size:11px" id="msg-count">0</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:11px;color:var(--muted)">Avg response</span>
+        <span class="mono" style="font-size:11px" id="avg-rt">—</span>
+      </div>
+      <div style="display:flex;justify-content:space-between">
+        <span style="font-size:11px;color:var(--muted)">KB chunks used</span>
+        <span class="mono" style="font-size:11px" id="chunks-used">0</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let msgCount = 0, totalRT = 0, chunksUsed = 0;
+
+function sendQuick(q) {
+  document.getElementById('chat-input').value = q;
+  sendMessage();
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+
+  // User bubble
+  appendMsg('user', msg);
+  msgCount++;
+  document.getElementById('msg-count').textContent = msgCount;
+
+  // Typing indicator
+  const typingId = appendTyping();
+  document.getElementById('send-btn').disabled = true;
+
+  try {
+    const t0 = Date.now();
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({message: msg})
+    });
+    const d = await res.json();
+    removeTyping(typingId);
+
+    const rt = d.response_time_ms || (Date.now() - t0);
+    totalRT += rt;
+    chunksUsed += (d.sources || []).length;
+    document.getElementById('avg-rt').textContent = Math.round(totalRT/msgCount) + 'ms';
+    document.getElementById('chunks-used').textContent = chunksUsed;
+
+    // Sources
+    let sourcesHtml = '';
+    if (d.sources && d.sources.length) {
+      sourcesHtml = `<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08)">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:6px">SOURCES</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${d.sources.map(s=>`<span style="background:rgba(0,212,200,0.08);color:var(--teal);padding:2px 8px;border-radius:4px;font-size:10px">${s.category}: ${s.title}</span>`).join('')}
+        </div>
+      </div>`;
+    }
+
+    appendMsg('assistant', d.answer + sourcesHtml);
+
+  } catch(e) {
+    removeTyping(typingId);
+    appendMsg('assistant', '⚠ Connection error. Please try again.');
+  }
+  document.getElementById('send-btn').disabled = false;
+}
+
+function appendMsg(role, content) {
+  const container = document.getElementById('chat-messages');
+  const isUser = role === 'user';
+  const div = document.createElement('div');
+  div.className = `chat-msg ${role}`;
+  div.innerHTML = `
+    <div class="chat-avatar">${isUser ? '<i class="fa-solid fa-user"></i>' : '<i class="fa-solid fa-robot"></i>'}</div>
+    <div class="chat-bubble">${isUser ? escapeHtml(content) : content}</div>
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function appendTyping() {
+  const id = 'typing-' + Date.now();
+  const container = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.id = id;
+  div.className = 'chat-msg';
+  div.innerHTML = `
+    <div class="chat-avatar" style="background:rgba(0,212,200,0.15);color:var(--teal)"><i class="fa-solid fa-robot"></i></div>
+    <div class="chat-bubble" style="padding:16px 20px">
+      <div style="display:flex;gap:6px;align-items:center">
+        <div style="width:7px;height:7px;border-radius:50%;background:var(--teal);animation:pulse 0.8s ease infinite"></div>
+        <div style="width:7px;height:7px;border-radius:50%;background:var(--teal);animation:pulse 0.8s ease 0.2s infinite"></div>
+        <div style="width:7px;height:7px;border-radius:50%;background:var(--teal);animation:pulse 0.8s ease 0.4s infinite"></div>
+      </div>
+    </div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return id;
+}
+
+function removeTyping(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function resetChat() {
+  await fetch('/api/chat/reset', {method:'POST'});
+  document.getElementById('chat-messages').innerHTML = `
+    <div class="chat-msg">
+      <div class="chat-avatar" style="background:rgba(0,212,200,0.15);color:var(--teal)"><i class="fa-solid fa-robot"></i></div>
+      <div class="chat-bubble">Conversation reset. How can I help you?</div>
+    </div>`;
+  msgCount = 0; totalRT = 0; chunksUsed = 0;
+  document.getElementById('msg-count').textContent = 0;
+  document.getElementById('avg-rt').textContent = '—';
+  document.getElementById('chunks-used').textContent = 0;
+}
+</script>
+{% endblock %}

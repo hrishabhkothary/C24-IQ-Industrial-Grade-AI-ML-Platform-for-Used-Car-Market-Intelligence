@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}C24-IQ | Cars24 Intelligence Platform{% endblock %}</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:       #0a0b10;
+  --surface:  #111318;
+  --surface2: #181c24;
+  --border:   #242834;
+  --accent:   #ff6b2b;
+  --accent2:  #ff9a5c;
+  --teal:     #00d4c8;
+  --purple:   #8b5cf6;
+  --green:    #22c55e;
+  --red:      #ef4444;
+  --yellow:   #f59e0b;
+  --text:     #e8eaf0;
+  --muted:    #6b7280;
+  --card-glow: 0 0 40px rgba(255,107,43,0.06);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* ── Layout ── */
+.layout { display: flex; min-height: 100vh; }
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 240px;
+  min-width: 240px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 100;
+  transition: all 0.3s;
+}
+
+.sidebar-logo {
+  padding: 24px 20px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo-mark {
+  font-family: 'DM Serif Display', serif;
+  font-size: 22px;
+  color: var(--accent);
+  letter-spacing: -0.5px;
+}
+.logo-sub {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.sidebar-nav { padding: 16px 12px; flex: 1; overflow-y: auto; }
+
+.nav-section-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 12px 8px 6px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+  margin-bottom: 2px;
+}
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active {
+  background: rgba(255,107,43,0.12);
+  color: var(--accent);
+  border: 1px solid rgba(255,107,43,0.2);
+}
+.nav-item i { width: 16px; text-align: center; font-size: 13px; }
+
+.sidebar-footer {
+  padding: 16px;
+  border-top: 1px solid var(--border);
+}
+.status-dot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  margin-right: 6px;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.status-text { font-size: 11px; color: var(--muted); }
+
+/* ── Main ── */
+.main {
+  margin-left: 240px;
+  flex: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Topbar ── */
+.topbar {
+  height: 56px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.topbar-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 18px;
+  color: var(--text);
+}
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.badge {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(255,107,43,0.1);
+  color: var(--accent);
+  border: 1px solid rgba(255,107,43,0.2);
+}
+
+/* ── Page content ── */
+.page { padding: 28px; flex: 1; }
+.page-header { margin-bottom: 24px; }
+.page-header h1 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 28px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.page-header p { color: var(--muted); font-size: 13px; }
+
+/* ── Cards ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: var(--card-glow);
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-title i { color: var(--accent); }
+
+/* ── KPI Cards ── */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 3px; height: 100%;
+  border-radius: 3px 0 0 3px;
+}
+.kpi-card.orange::before { background: var(--accent); }
+.kpi-card.teal::before   { background: var(--teal); }
+.kpi-card.purple::before { background: var(--purple); }
+.kpi-card.green::before  { background: var(--green); }
+.kpi-card:hover { border-color: rgba(255,107,43,0.3); }
+
+.kpi-label { font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+.kpi-value {
+  font-family: 'DM Serif Display', serif;
+  font-size: 28px;
+  color: var(--text);
+  line-height: 1.1;
+  margin: 6px 0 4px;
+}
+.kpi-sub { font-size: 11px; color: var(--muted); }
+.kpi-icon {
+  position: absolute;
+  top: 18px; right: 18px;
+  font-size: 20px;
+  opacity: 0.2;
+}
+
+/* ── Grid ── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.col-span-2 { grid-column: span 2; }
+
+/* ── Forms ── */
+.form-group { margin-bottom: 16px; }
+.form-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+.form-control {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: 'DM Sans', sans-serif;
+  transition: border-color 0.2s;
+  outline: none;
+}
+.form-control:focus { border-color: var(--accent); }
+.form-control option { background: var(--surface); }
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+.btn-primary {
+  background: var(--accent);
+  color: white;
+}
+.btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+.btn-teal { background: var(--teal); color: #0a0b10; }
+.btn-teal:hover { opacity: 0.85; }
+
+/* ── Tables ── */
+.table-wrap { overflow-x: auto; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+}
+td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(36,40,52,0.5);
+  color: var(--text);
+}
+tr:hover td { background: rgba(255,107,43,0.03); }
+
+/* ── Tags ── */
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.tag-petrol { background: rgba(245,158,11,0.15); color: var(--yellow); }
+.tag-diesel { background: rgba(139,92,246,0.15); color: var(--purple); }
+.tag-electric { background: rgba(0,212,200,0.15); color: var(--teal); }
+.tag-cng { background: rgba(34,197,94,0.15); color: var(--green); }
+.tag-hybrid { background: rgba(255,107,43,0.15); color: var(--accent); }
+.tag-suv { background: rgba(139,92,246,0.12); color: var(--purple); }
+.tag-sedan { background: rgba(0,212,200,0.12); color: var(--teal); }
+.tag-hatchback { background: rgba(245,158,11,0.12); color: var(--yellow); }
+
+/* ── Progress ── */
+.progress-bar { background: var(--bg); border-radius: 4px; height: 6px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 4px; transition: width 0.8s ease; }
+
+/* ── Chat ── */
+.chat-msg { display: flex; gap: 12px; margin-bottom: 16px; animation: fadeUp 0.3s ease; }
+.chat-msg.user { flex-direction: row-reverse; }
+.chat-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--surface2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.chat-msg.user .chat-avatar { background: rgba(255,107,43,0.15); color: var(--accent); }
+.chat-bubble {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 16px;
+  max-width: 75%;
+  font-size: 13px;
+  line-height: 1.65;
+}
+.chat-msg.user .chat-bubble { background: rgba(255,107,43,0.1); border-color: rgba(255,107,43,0.2); }
+
+/* ── Animations ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--surface2) 25%, var(--border) 50%, var(--surface2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 6px;
+}
+
+/* ── Mono values ── */
+.mono { font-family: 'IBM Plex Mono', monospace; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .grid-2 { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+  .sidebar { width: 200px; min-width: 200px; }
+  .main { margin-left: 200px; }
+}
+
+/* ── Chart canvas ── */
+canvas { max-height: 280px; }
+</style>
+{% block extra_head %}{% endblock %}
+</head>
+<body>
+<div class="layout">
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">C24·IQ</div>
+      <div class="logo-sub">Intelligence Platform</div>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-section-label">Platform</div>
+      <a href="/" class="nav-item {% if request.path == '/' %}active{% endif %}">
+        <i class="fa-solid fa-house"></i> Overview
+      </a>
+      <a href="/dashboard" class="nav-item {% if request.path == '/dashboard' %}active{% endif %}">
+        <i class="fa-solid fa-chart-pie"></i> Dashboard
+      </a>
+
+      <div class="nav-section-label">Intelligence</div>
+      <a href="/predict" class="nav-item {% if request.path == '/predict' %}active{% endif %}">
+        <i class="fa-solid fa-brain"></i> Price Predictor
+      </a>
+      <a href="/market" class="nav-item {% if request.path == '/market' %}active{% endif %}">
+        <i class="fa-solid fa-chart-line"></i> Market Intel
+      </a>
+      <a href="/analytics" class="nav-item {% if request.path == '/analytics' %}active{% endif %}">
+        <i class="fa-solid fa-magnifying-glass-chart"></i> Analytics
+      </a>
+
+      <div class="nav-section-label">Data</div>
+      <a href="/listings" class="nav-item {% if request.path == '/listings' %}active{% endif %}">
+        <i class="fa-solid fa-car"></i> Listings
+      </a>
+
+      <div class="nav-section-label">AI</div>
+      <a href="/assistant" class="nav-item {% if request.path == '/assistant' %}active{% endif %}">
+        <i class="fa-solid fa-robot"></i> AI Assistant <span style="margin-left:auto;font-size:9px;padding:2px 5px;background:rgba(0,212,200,0.1);color:var(--teal);border-radius:3px;">RAG</span>
+      </a>
+    </div>
+    <div class="sidebar-footer">
+      <span class="status-dot"></span>
+      <span class="status-text">System Online · v2.5</span>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-title">{% block page_title %}C24-IQ{% endblock %}</div>
+      <div class="topbar-right">
+        <span class="badge"><i class="fa-solid fa-circle" style="color:var(--green);font-size:7px;margin-right:4px;"></i>LIVE</span>
+        <span class="badge">XGBoost · RF · LLM</span>
+        <span id="clock" class="mono" style="font-size:11px;color:var(--muted);"></span>
+      </div>
+    </header>
+
+    <div class="page">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+
+<script>
+// Clock
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// INR formatter
+function fmtINR(n) {
+  if (n >= 1e7) return '₹' + (n/1e7).toFixed(2) + ' Cr';
+  if (n >= 1e5) return '₹' + (n/1e5).toFixed(2) + ' L';
+  return '₹' + n.toLocaleString('en-IN');
+}
+
+// Chart defaults
+if (typeof Chart !== 'undefined') {
+  Chart.defaults.color = '#6b7280';
+  Chart.defaults.borderColor = '#242834';
+  Chart.defaults.font.family = 'DM Sans';
+}
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% block title %}C24-IQ | Overview{% endblock %}
+{% block page_title %}Platform Overview{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Cars24 Intelligence Quotient</h1>
+  <p>AI-powered used car market analytics · Price prediction · GenAI assistant · Real-time data ingestion</p>
+</div>
+
+<!-- KPI Strip -->
+<div class="kpi-grid" id="kpi-grid">
+  <div class="kpi-card orange">
+    <i class="fa-solid fa-car-side kpi-icon"></i>
+    <div class="kpi-label">Total Listings</div>
+    <div class="kpi-value mono" id="kpi-total">—</div>
+    <div class="kpi-sub">Active car records in DB</div>
+  </div>
+  <div class="kpi-card teal">
+    <i class="fa-solid fa-indian-rupee-sign kpi-icon"></i>
+    <div class="kpi-label">Avg Market Price</div>
+    <div class="kpi-value" id="kpi-price">—</div>
+    <div class="kpi-sub">Across all segments</div>
+  </div>
+  <div class="kpi-card purple">
+    <i class="fa-solid fa-clock kpi-icon"></i>
+    <div class="kpi-label">Avg Days on Market</div>
+    <div class="kpi-value mono" id="kpi-days">—</div>
+    <div class="kpi-sub">From listing to sale</div>
+  </div>
+  <div class="kpi-card green">
+    <i class="fa-solid fa-percent kpi-icon"></i>
+    <div class="kpi-label">Loan Approval Rate</div>
+    <div class="kpi-value mono" id="kpi-loan">—</div>
+    <div class="kpi-sub">Based on credit profiles</div>
+  </div>
+</div>
+
+<!-- Feature Cards -->
+<div class="grid-2" style="margin-bottom:16px">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fa-solid fa-brain"></i> ML Price Prediction Engine</div>
+      <a href="/predict" class="btn btn-primary" style="font-size:11px;padding:6px 14px;">Try It →</a>
+    </div>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">
+      Stacked ensemble of <strong style="color:var(--text)">XGBoost + Random Forest + Gradient Boosting</strong> models trained on 5,000+ listings. Feature engineering with 25+ derived variables.
+    </p>
+    <div id="model-metrics-mini" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+      <div style="background:var(--bg);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">R² Score</div>
+        <div class="mono" style="font-size:18px;color:var(--green)" id="r2-val">—</div>
+      </div>
+      <div style="background:var(--bg);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">MAE</div>
+        <div class="mono" style="font-size:18px;color:var(--accent)" id="mae-val">—</div>
+      </div>
+      <div style="background:var(--bg);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">MAPE</div>
+        <div class="mono" style="font-size:18px;color:var(--teal)" id="mape-val">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fa-solid fa-robot"></i> GenAI RAG Assistant</div>
+      <a href="/assistant" class="btn btn-teal" style="font-size:11px;padding:6px 14px;color:#0a0b10">Chat →</a>
+    </div>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">
+      Powered by <strong style="color:var(--text)">Claude (Anthropic)</strong> with RAG over a structured knowledge base covering pricing, depreciation, finance, EV market, and buying/selling tips.
+    </p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <span style="background:rgba(0,212,200,0.1);color:var(--teal);padding:4px 10px;border-radius:20px;font-size:11px;">Retrieval Augmented</span>
+      <span style="background:rgba(139,92,246,0.1);color:var(--purple);padding:4px 10px;border-radius:20px;font-size:11px;">Multi-turn Conversation</span>
+      <span style="background:rgba(255,107,43,0.1);color:var(--accent);padding:4px 10px;border-radius:20px;font-size:11px;">Live Market Context</span>
+      <span style="background:rgba(34,197,94,0.1);color:var(--green);padding:4px 10px;border-radius:20px;font-size:11px;">9-Category KB</span>
+    </div>
+    <div style="margin-top:16px;font-size:12px;color:var(--muted)">
+      Queries served: <span class="mono" style="color:var(--text)" id="rag-queries">—</span>
+    </div>
+  </div>
+</div>
+
+<!-- Tech Stack + Stream -->
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fa-solid fa-layer-group"></i> Technology Stack</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      {% set stack = [
+        ("Python 3.11+", "Core language · Data science ecosystem", "fa-python", "#3776ab"),
+        ("Pandas + NumPy", "Data manipulation · Feature engineering", "fa-table", "#e57c13"),
+        ("Scikit-learn", "ML pipelines · Preprocessing · Metrics", "fa-robot", "#f7931e"),
+        ("XGBoost + LightGBM", "Gradient boosting price prediction", "fa-chart-bar", "#22c55e"),
+        ("Flask", "REST API · Web server · SSE streaming", "fa-server", "#ff6b2b"),
+        ("SQLite / PostgreSQL", "Persistent storage · Analytics queries", "fa-database", "#336791"),
+        ("Claude API (RAG)", "GenAI question answering · LLM", "fa-brain", "#00d4c8"),
+        ("Chart.js", "Interactive data visualizations", "fa-chart-pie", "#8b5cf6"),
+      ] %}
+      {% for name, desc, icon, color in stack %}
+      <div style="display:flex;align-items:center;gap:12px;padding:8px;background:var(--bg);border-radius:8px">
+        <i class="fa-brands {{ icon }}" style="color:{{ color }};font-size:16px;width:20px;text-align:center"></i>
+        <div>
+          <div style="font-size:12px;font-weight:600;color:var(--text)">{{ name }}</div>
+          <div style="font-size:11px;color:var(--muted)">{{ desc }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fa-solid fa-satellite-dish"></i> Real-Time Stream</div>
+      <button onclick="startStream()" class="btn btn-outline" id="stream-btn" style="font-size:11px;padding:6px 14px;">
+        <i class="fa-solid fa-play"></i> Start
+      </button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px">
+      Live car listing ingestion via SSE (Server-Sent Events)
+    </div>
+    <div id="stream-feed" style="height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
+      <div style="color:var(--muted);font-size:12px;text-align:center;padding:40px 0">
+        <i class="fa-solid fa-satellite-dish" style="font-size:24px;margin-bottom:8px;display:block;opacity:0.3"></i>
+        Click Start to begin real-time feed
+      </div>
+    </div>
+    <div style="margin-top:12px;display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">
+      <span>Events received: <span class="mono" style="color:var(--text)" id="stream-count">0</span></span>
+      <span id="stream-status">● Idle</span>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Load KPIs
+fetch('/api/kpis').then(r=>r.json()).then(d => {
+  document.getElementById('kpi-total').textContent = d.total_listings.toLocaleString();
+  document.getElementById('kpi-price').textContent = fmtINR(d.avg_price);
+  document.getElementById('kpi-days').textContent = d.avg_days + ' days';
+  document.getElementById('kpi-loan').textContent = d.loan_approval_rate.toFixed(1) + '%';
+  document.getElementById('rag-queries').textContent = d.total_rag_queries;
+});
+
+// Load model metrics
+fetch('/api/model_metrics').then(r=>r.json()).then(d => {
+  if (d.metrics && d.metrics.ensemble) {
+    document.getElementById('r2-val').textContent = d.metrics.ensemble.r2;
+    document.getElementById('mae-val').textContent = '₹' + (d.metrics.ensemble.mae/1000).toFixed(0) + 'K';
+    document.getElementById('mape-val').textContent = d.metrics.ensemble.mape + '%';
+  }
+});
+
+// Stream
+let streamSource = null;
+let streamCount = 0;
+let streamActive = false;
+
+function startStream() {
+  if (streamActive) {
+    if (streamSource) streamSource.close();
+    streamActive = false;
+    document.getElementById('stream-btn').innerHTML = '<i class="fa-solid fa-play"></i> Start';
+    document.getElementById('stream-status').textContent = '● Idle';
+    return;
+  }
+
+  streamActive = true;
+  document.getElementById('stream-btn').innerHTML = '<i class="fa-solid fa-stop"></i> Stop';
+  document.getElementById('stream-status').innerHTML = '<span style="color:var(--green)">● Live</span>';
+  document.getElementById('stream-feed').innerHTML = '';
+
+  streamSource = new EventSource('/api/stream/sse');
+  streamSource.onmessage = function(e) {
+    const d = JSON.parse(e.data);
+    streamCount++;
+    document.getElementById('stream-count').textContent = streamCount;
+
+    const feed = document.getElementById('stream-feed');
+    const item = document.createElement('div');
+    item.style.cssText = 'background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:10px;animation:fadeUp 0.3s ease;font-size:12px;';
+    item.innerHTML = `
+      <span style="color:var(--accent);font-weight:600">${d.brand} ${d.model}</span>
+      <span style="color:var(--muted)">${d.city}</span>
+      <span style="margin-left:auto;color:var(--green);font-family:monospace">${fmtINR(d.price)}</span>
+      <span style="color:var(--muted)">${d.km.toLocaleString()} km</span>
+      <span style="color:var(--muted);font-size:10px">${d.ts}</span>
+    `;
+    feed.prepend(item);
+    if (feed.children.length > 15) feed.lastChild.remove();
+  };
+  streamSource.onerror = function() {
+    streamActive = false;
+    document.getElementById('stream-status').textContent = '● Idle';
+    document.getElementById('stream-btn').innerHTML = '<i class="fa-solid fa-play"></i> Start';
+  };
+}
+</script>
+{% endblock %}
